@@ -1,38 +1,44 @@
-document.getElementById("checkBtn").addEventListener("click", async () => {
-  const link = document.getElementById("ytLink").value.trim();
-  if (!link) return;
 
-  setOutput("Opening tab...");
+// On popup open, check if current tab is a YouTube page
+document.addEventListener("DOMContentLoaded", async () => {
+  setOutput("Checking current tab...");
+  chrome.tabs.query({ active: true, currentWindow: true }, async (tabs) => {
+    const tab = tabs[0];
+    if (!tab || !tab.url) {
+      setOutput("No active tab detected.");
+      return;
+    }
+    if (/^https:\/\/(www\.)?youtube\.com\/.*/.test(tab.url)) {
+      if (confirm("Detected YouTube page. Run playlist extractor?")) {
+        setOutput("Running extractor...");
+        try {
+          // Step 1: Click the "...more" button
+          const [clickResult] = await chrome.scripting.executeScript({
+            target: { tabId: tab.id },
+            func: clickExpandMoreButton
+          });
+          setOutput(`Click result for See More: ${clickResult?.result}`);
 
-  chrome.tabs.create({ url: link, active: false }, async (tab) => {
-    try {
-      await waitForTabComplete(tab.id);
-      setOutput("Tab loaded, clicking...");
+          // Step 2: Wait briefly for description to expand
+          await new Promise((r) => setTimeout(r, 1500));
 
-      // Step 1: Click the "...more" button
-      const [clickResult] = await chrome.scripting.executeScript({
-        target: { tabId: tab.id },
-        func: clickExpandMoreButton
-      });
-
-      setOutput(`Click result: ${clickResult?.result}`);
-
-      // Step 2: Wait briefly for description to expand
-      await new Promise((r) => setTimeout(r, 1500));
-
-      // Step 3: Extract the description
-      const [descResult] = await chrome.scripting.executeScript({
-        target: { tabId: tab.id },
-        func: extractDescription
-      });
-
-      const description = descResult?.result || "No description found";
-      console.log("Popup got description:", description);
-      setOutput(description);
-
-    } catch (err) {
-      console.error("Error:", err);
-      setOutput(`Error: ${err.message}`);
+          // Step 3: Extract the description
+          const [descResult] = await chrome.scripting.executeScript({
+            target: { tabId: tab.id },
+            func: extractDescription
+          });
+          const description = descResult?.result || "No description found";
+          console.log("Popup got description:", description);
+          setOutput(Array.isArray(description) ? description.join("\n") : description);
+        } catch (err) {
+          console.error("Error:", err);
+          setOutput(`Error: ${err.message}`);
+        }
+      } else {
+        setOutput("Extractor cancelled by user.");
+      }
+    } else {
+      setOutput("Not a YouTube page. Open a YouTube video to use extractor.");
     }
   });
 });
