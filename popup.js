@@ -156,7 +156,8 @@ function setOutput(text) {
       btn.addEventListener('click', function() {
         const title = btn.getAttribute('data-title');
         const url = `https://www.youtube.com/results?search_query=${title}`;
-        window.open(url, '_blank');
+        // Open new tab in background
+        chrome.tabs.create({ url: url, active: false });
       });
     });
   } else {
