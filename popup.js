@@ -136,14 +136,14 @@ function setOutput(text) {
   const el = document.getElementById("output");
   if (!el) return;
   if (Array.isArray(text)) {
-    el.innerHTML = `<div class='list-group'>` + text.map((line) => {
+    el.innerHTML = `<div class='list-group'>` + text.map((line, idx) => {
       // Expect format: "timestamp - title"
       const match = line.match(/^(\d{1,2}:\d{2}(?::\d{2})?) - (.+)$/);
       if (match) {
         const title = match[2];
         return `
           <div class='list-group-item d-flex justify-content-between align-items-center mb-2'>
-            <span><span class='badge bg-primary me-2'>${match[1]}</span> ${title}</span>
+            <span><span class='badge bg-secondary me-2'>${idx + 1}</span><span class='badge bg-primary me-2'>${match[1]}</span> ${title}</span>
             <button type='button' class='btn btn-success btn-sm search-btn' data-title='${encodeURIComponent(title)}'>Search</button>
           </div>
         `;
