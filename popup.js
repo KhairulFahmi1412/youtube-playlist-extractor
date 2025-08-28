@@ -1,4 +1,3 @@
-
 // On popup open, check if current tab is a YouTube page
 document.addEventListener("DOMContentLoaded", async () => {
   setOutput("Checking current tab...");
@@ -29,7 +28,7 @@ document.addEventListener("DOMContentLoaded", async () => {
           });
           const description = descResult?.result || "No description found";
           console.log("Popup got description:", description);
-          setOutput(Array.isArray(description) ? description.join("\n") : description);
+          setOutput(description);
         } catch (err) {
           console.error("Error:", err);
           setOutput(`Error: ${err.message}`);
@@ -119,5 +118,32 @@ function extractDescription() {
 // Display helper
 function setOutput(text) {
   const el = document.getElementById("output");
-  if (el) el.textContent = text;
+  if (!el) return;
+  if (Array.isArray(text)) {
+    el.innerHTML = `<div class='list-group'>` + text.map((line) => {
+      // Expect format: "timestamp - title"
+      const match = line.match(/^(\d{1,2}:\d{2}(?::\d{2})?) - (.+)$/);
+      if (match) {
+        const title = match[2];
+        return `
+          <div class='list-group-item d-flex justify-content-between align-items-center mb-2'>
+            <span><span class='badge bg-primary me-2'>${match[1]}</span> ${title}</span>
+            <button type='button' class='btn btn-success btn-sm search-btn' data-title='${encodeURIComponent(title)}'>Search</button>
+          </div>
+        `;
+      } else {
+        return `<div class='list-group-item'>${line}</div>`;
+      }
+    }).join("") + `</div>`;
+    // Add event listeners for search buttons
+    Array.from(el.querySelectorAll('.search-btn')).forEach(btn => {
+      btn.addEventListener('click', function() {
+        const title = btn.getAttribute('data-title');
+        const url = `https://www.youtube.com/results?search_query=${title}`;
+        window.open(url, '_blank');
+      });
+    });
+  } else {
+    el.innerHTML = `<div class='alert alert-info'>${text}</div>`;
+  }
 }
