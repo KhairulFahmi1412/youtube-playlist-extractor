@@ -3,7 +3,7 @@
   "name": "YouTube Playlist Extractor",
   "version": "1.0",
   "description": "Extracts song names from playlist video based on timestamps.",
-  "permissions": ["scripting", "tabs"],
+  "permissions": ["scripting", "tabs", "storage"],
   "host_permissions": ["https://*.youtube.com/*"],
   "action": {
     "default_popup": "popup.html",

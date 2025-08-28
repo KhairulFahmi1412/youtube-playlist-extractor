@@ -2,43 +2,59 @@
 document.addEventListener("DOMContentLoaded", async () => {
   setOutput("Checking current tab...");
   chrome.tabs.query({ active: true, currentWindow: true }, async (tabs) => {
+    if (!tabs || !tabs.length) {
+      setOutput("No tabs found.");
+      return;
+    }
     const tab = tabs[0];
     if (!tab || !tab.url) {
       setOutput("No active tab detected.");
       return;
     }
-    if (/^https:\/\/(www\.)?youtube\.com\/.*/.test(tab.url)) {
-      if (confirm("Detected YouTube page. Run playlist extractor?")) {
-        setOutput("Running extractor...");
-        try {
-          // Step 1: Click the "...more" button
-          const [clickResult] = await chrome.scripting.executeScript({
-            target: { tabId: tab.id },
-            func: clickExpandMoreButton
-          });
-          setOutput(`Click result for See More: ${clickResult?.result}`);
+    // Try to load cached description for this tab
+    chrome.storage.local.get([tab.url], async (result) => {
+      console.log('Storage get result:', result); // Debug log
+      if (result[tab.url]) {
+        setOutput(result[tab.url]);
+        return;
+      }
+      if (/^https:\/\/(www\.)?youtube\.com\/.*/.test(tab.url)) {
+        if (confirm("Detected YouTube page. Run playlist extractor?")) {
+          setOutput("Running extractor...");
+          try {
+            // Step 1: Click the "...more" button
+            const [clickResult] = await chrome.scripting.executeScript({
+              target: { tabId: tab.id },
+              func: clickExpandMoreButton
+            });
+            setOutput(`Click result for See More: ${clickResult?.result}`);
 
-          // Step 2: Wait briefly for description to expand
-          await new Promise((r) => setTimeout(r, 1500));
+            // Step 2: Wait briefly for description to expand
+            await new Promise((r) => setTimeout(r, 1500));
 
-          // Step 3: Extract the description
-          const [descResult] = await chrome.scripting.executeScript({
-            target: { tabId: tab.id },
-            func: extractDescription
-          });
-          const description = descResult?.result || "No description found";
-          console.log("Popup got description:", description);
-          setOutput(description);
-        } catch (err) {
-          console.error("Error:", err);
-          setOutput(`Error: ${err.message}`);
+            // Step 3: Extract the description
+            const [descResult] = await chrome.scripting.executeScript({
+              target: { tabId: tab.id },
+              func: extractDescription
+            });
+            const description = descResult?.result || "No description found";
+            console.log("Popup got description:", description);
+            setOutput(description);
+            // Save to storage for this tab URL
+            chrome.storage.local.set({ [tab.url]: description }, () => {
+              console.log('Storage set complete:', tab.url, description);
+            });
+          } catch (err) {
+            console.error("Error:", err);
+            setOutput(`Error: ${err.message}`);
+          }
+        } else {
+          setOutput("Extractor cancelled by user.");
         }
       } else {
-        setOutput("Extractor cancelled by user.");
+        setOutput("Not a YouTube page. Open a YouTube video to use extractor.");
       }
-    } else {
-      setOutput("Not a YouTube page. Open a YouTube video to use extractor.");
-    }
+    });
   });
 });
 
